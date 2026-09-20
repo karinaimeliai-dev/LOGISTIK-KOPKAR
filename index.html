@@ -240,6 +240,115 @@
     display:inline-block;
   }
 
+  .search-box{
+    width:100%;
+    padding:7px 9px;
+    font-size:12.5px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    margin-bottom:5px;
+    font-family:inherit;
+    background:#FBFAF7;
+  }
+  .search-box:focus{ outline:none; border-color:var(--navy); background:#fff; }
+  .matrow-container{ margin-bottom:10px; }
+  .matrow{
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:10px 10px 8px 10px;
+    margin-bottom:8px;
+    background:#FBFAF7;
+    position:relative;
+  }
+  .matrow .matrow-topline{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    margin-bottom:6px;
+  }
+  .matrow .matrow-topline span{
+    font-size:11px;
+    color:var(--steel);
+    font-weight:600;
+    flex-shrink:0;
+  }
+  .matrow-remove{
+    margin-left:auto;
+    cursor:pointer;
+    color:var(--red);
+    font-size:16px;
+    line-height:1;
+    padding:2px 4px;
+    flex-shrink:0;
+  }
+  .matrow-remove:hover{ opacity:0.7; }
+  .matrow-grid{
+    display:grid;
+    grid-template-columns:1fr 110px;
+    gap:8px;
+    align-items:start;
+  }
+  .matrow select, .matrow input[type="number"]{
+    width:100%;
+  }
+  .ac-wrap{ position:relative; margin-bottom:8px; }
+  .ac-wrap .search-box{ margin-bottom:0; }
+  .ac-list{
+    display:none;
+    position:absolute;
+    left:0; right:0; top:calc(100% + 2px);
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:4px;
+    box-shadow:0 4px 14px rgba(0,0,0,0.12);
+    max-height:220px;
+    overflow-y:auto;
+    z-index:50;
+  }
+  .ac-item{
+    padding:7px 10px;
+    font-size:12.5px;
+    cursor:pointer;
+    border-bottom:1px solid #F2F0E9;
+  }
+  .ac-item:last-child{ border-bottom:none; }
+  .ac-item:hover{ background:#F3F1EA; }
+  .ac-satuan{ color:var(--steel); }
+  .ac-empty{
+    padding:9px 10px;
+    font-size:12px;
+    color:var(--steel);
+  }
+  .matrow-picked{
+    font-size:11px;
+    color:var(--green);
+    margin:-4px 0 8px 2px;
+    display:none;
+  }
+  .matrow-picked.show{ display:block; }
+  .btn-add-row{
+    width:100%;
+    padding:8px;
+    text-align:center;
+    border:1px dashed var(--line);
+    border-radius:4px;
+    background:transparent;
+    color:var(--navy);
+    font-size:12.5px;
+    font-weight:600;
+    cursor:pointer;
+    margin-bottom:14px;
+  }
+  .btn-add-row:hover{ background:#F3F1EA; }
+  .quickadd-box{
+    border:1px solid var(--gold);
+    background:#FBF6EA;
+    border-radius:4px;
+    padding:10px;
+    margin-bottom:12px;
+  }
+  .quickadd-box .row2{ margin-bottom:8px; }
+
   .seg-toggle{
     display:flex;
     gap:0;
@@ -1223,10 +1332,174 @@ function rumahOptions(selected){
     `<option value="${b.id}" ${b.id===selected?'selected':''}>${escapeHtml(b.nama)}${b.status==='selesai' ? ' ✓ selesai' : ''}</option>`
   ).join('');
 }
+function rumahOptionsAktif(selected){
+  // dipakai di form Stok Keluar: rumah yang sudah "selesai" disembunyikan dari pilihan,
+  // kecuali kalau memang itu yang lagi terpilih (jaga-jaga supaya tidak hilang tiba-tiba)
+  return [...rumahBlocks]
+    .filter(b => b.status !== 'selesai' || b.id === selected)
+    .sort((a,b)=>a.id-b.id)
+    .map(b => `<option value="${b.id}" ${b.id===selected?'selected':''}>${escapeHtml(b.nama)}</option>`)
+    .join('');
+}
 function fasumOptions(selected){
   return [...fasumBlocks].sort((a,b)=>a.id-b.id).map(b =>
     `<option value="${b.id}" ${b.id===selected?'selected':''}>${escapeHtml(b.nama)}${b.status==='selesai' ? ' ✓ selesai' : ''}</option>`
   ).join('');
+}
+
+// ===== helper untuk dropdown yang bisa dicari (search) =====
+function buildMaterialOptionsHtml(filterText, selectedId){
+  const q = (filterText || '').trim().toLowerCase();
+  let list = [...materials].sort((a,b)=>a.nama.localeCompare(b.nama));
+  if(q){
+    list = list.filter(m => m.nama.toLowerCase().includes(q) || (m.sku||'').toLowerCase().includes(q));
+  }
+  // pastikan material yang lagi terpilih tetap ada di daftar walau tidak cocok filter
+  if(selectedId && !list.some(m=>m.id===selectedId)){
+    const sel = materials.find(m=>m.id===selectedId);
+    if(sel) list = [sel, ...list];
+  }
+  const opts = list.map(m => `<option value="${m.id}" ${m.id===selectedId?'selected':''}>${escapeHtml(m.sku)} — ${escapeHtml(m.nama)} (${escapeHtml(m.satuan)})</option>`);
+  return `<option value="">— pilih material —</option>` + opts.join('');
+}
+function buildRumahOptionsHtml(filterText, selectedId){
+  const q = (filterText || '').trim().toLowerCase();
+  let list = [...rumahBlocks].filter(b => b.status !== 'selesai' || b.id === selectedId).sort((a,b)=>a.id-b.id);
+  if(q){
+    list = list.filter(b => b.nama.toLowerCase().includes(q));
+  }
+  if(selectedId && !list.some(b=>b.id===selectedId)){
+    const sel = rumahBlocks.find(b=>b.id===selectedId);
+    if(sel) list = [sel, ...list];
+  }
+  const opts = list.map(b => `<option value="${b.id}" ${b.id===selectedId?'selected':''}>${escapeHtml(b.nama)}</option>`);
+  return `<option value="">— pilih rumah —</option>` + opts.join('');
+}
+function buildFasumOptionsHtml(filterText, selectedId){
+  const q = (filterText || '').trim().toLowerCase();
+  let list = [...fasumBlocks].sort((a,b)=>a.id-b.id);
+  if(q){
+    list = list.filter(b => b.nama.toLowerCase().includes(q));
+  }
+  if(selectedId && !list.some(b=>b.id===selectedId)){
+    const sel = fasumBlocks.find(b=>b.id===selectedId);
+    if(sel) list = [sel, ...list];
+  }
+  const opts = list.map(b => `<option value="${b.id}" ${b.id===selectedId?'selected':''}>${escapeHtml(b.nama)}${b.status==='selesai' ? ' ✓ selesai' : ''}</option>`);
+  return `<option value="">— pilih fasilitas —</option>` + opts.join('');
+}
+
+// ===== baris material dinamis (bisa tambah banyak material sekaligus dalam 1 form) =====
+function createMaterialRowEl(prefillMaterialId, prefillQty){
+  const row = document.createElement('div');
+  row.className = 'matrow';
+  const prefillMat = prefillMaterialId ? materials.find(m => m.id === prefillMaterialId) : null;
+  row.innerHTML = `
+    <div class="matrow-topline">
+      <span>Material</span>
+      <span class="matrow-remove" title="Hapus baris material ini">&times;</span>
+    </div>
+    <div class="ac-wrap">
+      <input type="text" class="search-box matrow-search" autocomplete="off" placeholder="Ketik nama material atau SKU..." value="${prefillMat ? escapeHtml(prefillMat.nama + ' (' + prefillMat.satuan + ')') : ''}">
+      <div class="ac-list"></div>
+    </div>
+    <input type="hidden" class="matrow-select" value="${prefillMaterialId || ''}">
+    <input type="number" class="mono matrow-qty" min="0.01" step="any" placeholder="Jumlah">
+  `;
+  if(prefillQty) row.querySelector('.matrow-qty').value = prefillQty;
+  wireMaterialAutocomplete(row);
+  row.querySelector('.matrow-remove').onclick = () => {
+    const container = row.parentElement;
+    row.remove();
+    if(container && container.querySelectorAll('.matrow').length === 0){
+      container.appendChild(createMaterialRowEl());
+    }
+  };
+  return row;
+}
+function wireMaterialAutocomplete(rowEl){
+  const searchInput = rowEl.querySelector('.matrow-search');
+  const hiddenInput = rowEl.querySelector('.matrow-select');
+  const listEl = rowEl.querySelector('.ac-list');
+  if(!searchInput || !hiddenInput || !listEl) return;
+
+  function renderSuggestions(){
+    const q = searchInput.value.trim().toLowerCase();
+    let list = [...materials].sort((a,b)=>a.nama.localeCompare(b.nama));
+    if(q) list = list.filter(m => m.nama.toLowerCase().includes(q) || (m.sku||'').toLowerCase().includes(q));
+    list = list.slice(0, 40); // batasi biar ringan, cukup ketik lebih spesifik kalau belum ketemu
+    if(list.length === 0){
+      listEl.innerHTML = `<div class="ac-empty">Tidak ada material yang cocok. Coba kata lain, atau pakai "+ Material belum ada di daftar?" di bawah.</div>`;
+    } else {
+      listEl.innerHTML = list.map(m =>
+        `<div class="ac-item" data-id="${m.id}">${escapeHtml(m.sku)} — ${escapeHtml(m.nama)} <span class="ac-satuan">(${escapeHtml(m.satuan)})</span></div>`
+      ).join('');
+    }
+    listEl.style.display = 'block';
+    listEl.querySelectorAll('.ac-item').forEach(item => {
+      item.onmousedown = (e) => {
+        e.preventDefault(); // supaya input tidak keburu blur sebelum klik ke-baca
+        const mat = materials.find(m => m.id === item.dataset.id);
+        if(mat){
+          hiddenInput.value = mat.id;
+          searchInput.value = mat.nama + ' (' + mat.satuan + ')';
+        }
+        listEl.style.display = 'none';
+      };
+    });
+  }
+
+  searchInput.oninput = () => {
+    hiddenInput.value = ''; // ketik ulang berarti belum pilih yang valid
+    renderSuggestions();
+  };
+  searchInput.onfocus = renderSuggestions;
+  searchInput.onblur = () => {
+    setTimeout(() => { listEl.style.display = 'none'; }, 150);
+  };
+}
+function ensureAtLeastOneRow(containerId){
+  const c = document.getElementById(containerId);
+  if(c && c.querySelectorAll('.matrow').length === 0){
+    c.appendChild(createMaterialRowEl());
+  }
+}
+function wireEntityAutocomplete(searchInputId, hiddenInputId, listId, getMatches){
+  const searchInput = document.getElementById(searchInputId);
+  const hiddenInput = document.getElementById(hiddenInputId);
+  const listEl = document.getElementById(listId);
+  if(!searchInput || !hiddenInput || !listEl) return;
+
+  function renderSuggestions(){
+    const q = searchInput.value.trim().toLowerCase();
+    const list = getMatches(q).slice(0, 40);
+    if(list.length === 0){
+      listEl.innerHTML = `<div class="ac-empty">Tidak ada yang cocok.</div>`;
+    } else {
+      listEl.innerHTML = list.map(item => `<div class="ac-item" data-id="${item.id}">${escapeHtml(item.label)}</div>`).join('');
+    }
+    listEl.style.display = 'block';
+    listEl.querySelectorAll('.ac-item').forEach(el => {
+      el.onmousedown = (e) => {
+        e.preventDefault();
+        const item = list.find(x => String(x.id) === el.dataset.id);
+        if(item){
+          hiddenInput.value = item.id;
+          searchInput.value = item.label;
+        }
+        listEl.style.display = 'none';
+      };
+    });
+  }
+
+  searchInput.oninput = () => {
+    hiddenInput.value = ''; // ketik ulang berarti belum pilih yang valid
+    renderSuggestions();
+  };
+  searchInput.onfocus = renderSuggestions;
+  searchInput.onblur = () => {
+    setTimeout(() => { listEl.style.display = 'none'; }, 150);
+  };
 }
 function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1644,21 +1917,6 @@ function renderInputPage(){
             <input type="text" name="petugas" class="mono" required placeholder="Nama kamu" value="${escapeHtml(lastPetugasIn)}">
           </div>
           <div class="field">
-            <label>Material</label>
-            <select name="materialId" class="mono" required>${materialOptions()}</select>
-          </div>
-          <span class="newmat-toggle" data-toggle="new-in">+ Tambah material baru</span>
-          <div id="new-in" class="row2" style="display:none; margin-bottom:13px;">
-            <div class="field" style="margin-bottom:0;">
-              <label>Nama material baru</label>
-              <input type="text" id="newmat-name-in" placeholder="mis. Semen Instan">
-            </div>
-            <div class="field" style="margin-bottom:0;">
-              <label>Satuan</label>
-              <input type="text" id="newmat-unit-in" placeholder="sak / m3 / pcs">
-            </div>
-          </div>
-          <div class="field">
             <label>Kategori Pembelian (sumber dana)</label>
             <div class="seg-toggle" id="kategori-in-toggle">
               <div class="seg-btn active" data-kategori-in="unit">Unit Rumah</div>
@@ -1668,21 +1926,11 @@ function renderInputPage(){
           </div>
           <div class="row2">
             <div class="field">
-              <label>Jumlah</label>
-              <input type="number" name="qty" class="mono" min="0.01" step="any" required placeholder="0">
-            </div>
-            <div class="field">
-              <label>Tanggal</label>
-              <input type="date" name="tanggal" class="mono" value="${todayStr()}" required>
-            </div>
-          </div>
-          <div class="row2">
-            <div class="field">
               <label>No. Bon / Bukti Beli</label>
               <input type="text" name="bon" class="mono" placeholder="mis. BON-0012">
             </div>
             <div class="field">
-              <label>Nominal Pembelian (Rp)</label>
+              <label>Nominal Total Bon (Rp)</label>
               <input type="number" name="nominal" class="mono" min="0" step="1" placeholder="0">
             </div>
           </div>
@@ -1692,6 +1940,31 @@ function renderInputPage(){
             <div id="foto-bon-preview" style="margin-top:8px;"></div>
           </div>
           <div class="field">
+            <label>Tanggal</label>
+            <input type="date" name="tanggal" class="mono" value="${todayStr()}" required style="max-width:200px;">
+          </div>
+
+          <label style="margin-bottom:7px;">Daftar Material (1 bon bisa banyak material)</label>
+          <div class="matrow-container" id="masuk-rows"></div>
+          <button type="button" class="btn-add-row" id="btn-add-row-masuk">+ Tambah Material</button>
+
+          <span class="newmat-toggle" data-toggle="quickadd-in">+ Material belum ada di daftar? Buat baru</span>
+          <div id="quickadd-in" class="quickadd-box" style="display:none;">
+            <div class="row2">
+              <div class="field" style="margin-bottom:0;">
+                <label>Nama material baru</label>
+                <input type="text" id="newmat-name-in" placeholder="mis. Semen Instan">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label>Satuan</label>
+                <input type="text" id="newmat-unit-in" placeholder="sak / m3 / pcs">
+              </div>
+            </div>
+            <button type="button" class="btn small ghost" id="btn-quickadd-in" style="border-color:var(--green); color:var(--green);">Buat &amp; Tambahkan ke Baris</button>
+            <div class="msg" id="msg-quickadd-in"></div>
+          </div>
+
+          <div class="field" style="margin-top:13px;">
             <label>Catatan (opsional)</label>
             <input type="text" name="catatan" placeholder="mis. supplier / no. PO">
           </div>
@@ -1734,43 +2007,51 @@ function renderInputPage(){
             <input type="hidden" name="kategoriTujuan" id="tujuan-out-value" value="unit">
           </div>
           <div class="field" id="tujuan-rumah-block">
-            <label>Rumah</label>
-            <select name="rumah" class="mono">${rumahOptions()}</select>
+            <label>Rumah <span style="font-weight:400; color:var(--steel);">(rumah yang sudah "Selesai" tidak ditampilkan)</span></label>
+            <div class="ac-wrap">
+              <input type="text" class="search-box" id="search-rumah-out" autocomplete="off" placeholder="Ketik nama rumah/blok...">
+              <div class="ac-list" id="ac-list-rumah-out"></div>
+            </div>
+            <input type="hidden" name="rumah" id="select-rumah-out">
           </div>
           <div class="field" id="tujuan-fasum-block" style="display:none;">
             <label>Fasilitas Umum</label>
-            <select name="fasumId" class="mono">${fasumOptions()}</select>
+            <div class="ac-wrap">
+              <input type="text" class="search-box" id="search-fasum-out" autocomplete="off" placeholder="Ketik nama proyek fasum...">
+              <div class="ac-list" id="ac-list-fasum-out"></div>
+            </div>
+            <input type="hidden" name="fasumId" id="select-fasum-out">
             <span class="newmat-toggle" data-toggle="new-fasum-out">+ Tambah fasilitas baru</span>
             <div id="new-fasum-out" style="display:none; margin:8px 0 13px 0;">
               <input type="text" id="newfasum-name-out" placeholder="mis. Kirmir Jalan RT 02">
             </div>
           </div>
           <div class="field">
-            <label>Material</label>
-            <select name="materialId" class="mono" required>${materialOptions()}</select>
+            <label>Tanggal</label>
+            <input type="date" name="tanggal" class="mono" value="${todayStr()}" required style="max-width:200px;">
           </div>
-          <span class="newmat-toggle" data-toggle="new-out">+ Tambah material baru</span>
-          <div id="new-out" class="row2" style="display:none; margin-bottom:13px;">
-            <div class="field" style="margin-bottom:0;">
-              <label>Nama material baru</label>
-              <input type="text" id="newmat-name-out" placeholder="mis. Semen Instan">
+
+          <label style="margin-bottom:7px;">Daftar Material (bisa banyak sekaligus untuk 1 rumah/proyek ini)</label>
+          <div class="matrow-container" id="keluar-rows"></div>
+          <button type="button" class="btn-add-row" id="btn-add-row-keluar">+ Tambah Material</button>
+
+          <span class="newmat-toggle" data-toggle="quickadd-out">+ Material belum ada di daftar? Buat baru</span>
+          <div id="quickadd-out" class="quickadd-box" style="display:none;">
+            <div class="row2">
+              <div class="field" style="margin-bottom:0;">
+                <label>Nama material baru</label>
+                <input type="text" id="newmat-name-out" placeholder="mis. Semen Instan">
+              </div>
+              <div class="field" style="margin-bottom:0;">
+                <label>Satuan</label>
+                <input type="text" id="newmat-unit-out" placeholder="sak / m3 / pcs">
+              </div>
             </div>
-            <div class="field" style="margin-bottom:0;">
-              <label>Satuan</label>
-              <input type="text" id="newmat-unit-out" placeholder="sak / m3 / pcs">
-            </div>
+            <button type="button" class="btn small ghost" id="btn-quickadd-out" style="border-color:var(--green); color:var(--green);">Buat &amp; Tambahkan ke Baris</button>
+            <div class="msg" id="msg-quickadd-out"></div>
           </div>
-          <div class="row2">
-            <div class="field">
-              <label>Jumlah</label>
-              <input type="number" name="qty" class="mono" min="0.01" step="any" required placeholder="0">
-            </div>
-            <div class="field">
-              <label>Tanggal</label>
-              <input type="date" name="tanggal" class="mono" value="${todayStr()}" required>
-            </div>
-          </div>
-          <div class="field">
+
+          <div class="field" style="margin-top:13px;">
             <label>Catatan (opsional)</label>
             <input type="text" name="catatan" placeholder="mis. dipakai untuk pondasi">
           </div>
@@ -2338,16 +2619,67 @@ function attachHandlers(){
     };
   });
 
-  const toggleNewIn = document.querySelector('[data-toggle="new-in"]');
-  if(toggleNewIn) toggleNewIn.onclick = () => {
-    const box = document.getElementById('new-in');
-    box.style.display = box.style.display==='none' ? 'grid' : 'none';
+  const toggleQuickaddIn = document.querySelector('[data-toggle="quickadd-in"]');
+  if(toggleQuickaddIn) toggleQuickaddIn.onclick = () => {
+    const box = document.getElementById('quickadd-in');
+    box.style.display = box.style.display==='none' ? 'block' : 'none';
   };
-  const toggleNewOut = document.querySelector('[data-toggle="new-out"]');
-  if(toggleNewOut) toggleNewOut.onclick = () => {
-    const box = document.getElementById('new-out');
-    box.style.display = box.style.display==='none' ? 'grid' : 'none';
+  const toggleQuickaddOut = document.querySelector('[data-toggle="quickadd-out"]');
+  if(toggleQuickaddOut) toggleQuickaddOut.onclick = () => {
+    const box = document.getElementById('quickadd-out');
+    box.style.display = box.style.display==='none' ? 'block' : 'none';
   };
+
+  async function handleQuickAdd(prefix, containerId){
+    const nameEl = document.getElementById('newmat-name-' + prefix);
+    const unitEl = document.getElementById('newmat-unit-' + prefix);
+    const msgEl = document.getElementById('msg-quickadd-' + prefix);
+    const name = (nameEl.value || '').trim();
+    const unit = (unitEl.value || '').trim();
+    if(!name || !unit){
+      msgEl.className = 'msg err';
+      msgEl.textContent = 'Nama dan satuan material wajib diisi.';
+      return;
+    }
+    const newMat = { id: uid(), sku: nextSkuNumber(), nama: name, satuan: unit, maxPerRumah: 0 };
+    materials.push(newMat);
+    await saveMaterials();
+    const container = document.getElementById(containerId);
+    if(container) container.appendChild(createMaterialRowEl(newMat.id));
+    nameEl.value = '';
+    unitEl.value = '';
+    msgEl.className = 'msg ok';
+    msgEl.textContent = `"${name}" dibuat & ditambahkan sebagai baris baru di bawah.`;
+  }
+  const btnQuickaddIn = document.getElementById('btn-quickadd-in');
+  if(btnQuickaddIn) btnQuickaddIn.onclick = () => handleQuickAdd('in', 'masuk-rows');
+  const btnQuickaddOut = document.getElementById('btn-quickadd-out');
+  if(btnQuickaddOut) btnQuickaddOut.onclick = () => handleQuickAdd('out', 'keluar-rows');
+
+  ensureAtLeastOneRow('masuk-rows');
+  ensureAtLeastOneRow('keluar-rows');
+  const btnAddRowMasuk = document.getElementById('btn-add-row-masuk');
+  if(btnAddRowMasuk) btnAddRowMasuk.onclick = () => {
+    document.getElementById('masuk-rows').appendChild(createMaterialRowEl());
+  };
+  const btnAddRowKeluar = document.getElementById('btn-add-row-keluar');
+  if(btnAddRowKeluar) btnAddRowKeluar.onclick = () => {
+    document.getElementById('keluar-rows').appendChild(createMaterialRowEl());
+  };
+
+  wireEntityAutocomplete('search-rumah-out', 'select-rumah-out', 'ac-list-rumah-out', (q) => {
+    return rumahBlocks
+      .filter(b => b.status !== 'selesai')
+      .filter(b => !q || b.nama.toLowerCase().includes(q))
+      .sort((a,b)=>a.id-b.id)
+      .map(b => ({ id: b.id, label: b.nama }));
+  });
+  wireEntityAutocomplete('search-fasum-out', 'select-fasum-out', 'ac-list-fasum-out', (q) => {
+    return fasumBlocks
+      .filter(b => !q || b.nama.toLowerCase().includes(q))
+      .sort((a,b)=>a.id-b.id)
+      .map(b => ({ id: b.id, label: b.nama + (b.status==='selesai' ? ' ✓ selesai' : '') }));
+  });
 
   document.querySelectorAll('[data-kategori-in]').forEach(el => {
     el.onclick = () => {
@@ -2864,8 +3196,6 @@ function attachHandlers(){
 
 async function handleSubmit(form, type){
   const fd = new FormData(form);
-  let materialId = fd.get('materialId');
-  const qty = parseFloat(fd.get('qty'));
   const tanggal = fd.get('tanggal');
   const catatan = (fd.get('catatan') || '').trim();
   const petugas = (fd.get('petugas') || '').trim();
@@ -2914,58 +3244,67 @@ async function handleSubmit(form, type){
     return;
   }
 
-  const newNameEl = document.getElementById(type==='in' ? 'newmat-name-in' : 'newmat-name-out');
-  const newUnitEl = document.getElementById(type==='in' ? 'newmat-unit-in' : 'newmat-unit-out');
-  const newName = newNameEl ? newNameEl.value.trim() : '';
-  const newUnit = newUnitEl ? newUnitEl.value.trim() : '';
-
-  if(newName){
-    if(!newUnit){
+  // kumpulkan semua baris material yang terisi valid (bisa lebih dari satu)
+  const rowsContainer = form.querySelector('.matrow-container');
+  const rowEls = rowsContainer ? Array.from(rowsContainer.querySelectorAll('.matrow')) : [];
+  const rows = [];
+  for(const rowEl of rowEls){
+    const selEl = rowEl.querySelector('.matrow-select');
+    const qtyEl = rowEl.querySelector('.matrow-qty');
+    const materialId = selEl ? selEl.value : '';
+    const qty = qtyEl ? parseFloat(qtyEl.value) : NaN;
+    if(!materialId && (!qtyEl || !qtyEl.value)) continue; // baris kosong, lewati diam-diam
+    if(!materialId){
       msgEl.className = 'msg err';
-      msgEl.textContent = 'Satuan material baru wajib diisi.';
+      msgEl.textContent = 'Ada baris yang belum pilih material.';
       return;
     }
-    const newMat = { id: uid(), sku: nextSkuNumber(), nama: newName, satuan: newUnit, maxPerRumah: 0 };
-    materials.push(newMat);
-    await saveMaterials();
-    materialId = newMat.id;
+    if(!qty || isNaN(qty) || qty <= 0){
+      msgEl.className = 'msg err';
+      msgEl.textContent = `Jumlah untuk ${materialName(materialId)} harus lebih dari 0.`;
+      return;
+    }
+    rows.push({ materialId, qty });
   }
 
-  if(!materialId){
+  if(rows.length === 0){
     msgEl.className = 'msg err';
-    msgEl.textContent = 'Pilih atau tambahkan material terlebih dahulu.';
-    return;
-  }
-  if(!qty || qty <= 0){
-    msgEl.className = 'msg err';
-    msgEl.textContent = 'Jumlah harus lebih dari 0.';
+    msgEl.textContent = 'Tambahkan minimal 1 material dengan jumlahnya.';
     return;
   }
 
-  const tx = {
-    id: uid(),
-    type,
-    materialId,
-    qty,
-    rumah,
-    tanggal,
-    catatan,
-    petugas,
-    ts: Date.now()
-  };
-  if(type === 'in'){
-    tx.kategori = kategoriIn;
-    if(bon) tx.bon = bon;
-    if(nominal !== null && nominal > 0) tx.nominal = nominal;
-    if(pendingFotoBonIn) tx.hasFoto = true;
-  } else {
-    tx.kategori = kategoriTujuan;
-    if(kategoriTujuan === 'fasum') tx.fasumId = fasumId;
-  }
-  transactions.push(tx);
+  const now = Date.now();
+  const newTxs = rows.map((r, idx) => {
+    const tx = {
+      id: uid(),
+      type,
+      materialId: r.materialId,
+      qty: r.qty,
+      rumah,
+      tanggal,
+      catatan,
+      petugas,
+      ts: now + idx // urutan stabil kalau nanti diurutkan per waktu
+    };
+    if(type === 'in'){
+      tx.kategori = kategoriIn;
+      if(bon) tx.bon = bon;
+      // nominal & foto cuma dilekatkan ke baris PERTAMA supaya total di Rekap Pembelian tidak dobel dihitung
+      if(idx === 0){
+        if(nominal !== null && nominal > 0) tx.nominal = nominal;
+        if(pendingFotoBonIn) tx.hasFoto = true;
+      }
+    } else {
+      tx.kategori = kategoriTujuan;
+      if(kategoriTujuan === 'fasum') tx.fasumId = fasumId;
+    }
+    return tx;
+  });
+
+  transactions = transactions.concat(newTxs);
   await saveTransactions();
   if(type === 'in' && pendingFotoBonIn){
-    try{ await remoteSet('foto_' + tx.id, pendingFotoBonIn); }
+    try{ await remoteSet('foto_' + newTxs[0].id, pendingFotoBonIn); }
     catch(e){ console.error('gagal simpan foto', e); }
   }
   pendingFotoBonIn = null;
@@ -2974,20 +3313,27 @@ async function handleSubmit(form, type){
   else lastPetugasOut = petugas;
 
   let msgClass = 'msg ok';
-  let msgText = tx.nominal ? `Stok masuk tersimpan (${fmtRupiah(tx.nominal)}).` : 'Stok masuk tersimpan.';
-  if(type === 'out'){
-    if(kategoriTujuan === 'fasum'){
-      msgText = `Stok keluar untuk ${fasumLabel(fasumId)} tersimpan.`;
+  let msgText;
+  if(type === 'in'){
+    msgText = `${rows.length} material tersimpan sebagai Stok Masuk` + (nominal ? ` (total ${fmtRupiah(nominal)})` : '') + '.';
+  } else if(kategoriTujuan === 'fasum'){
+    msgText = `${rows.length} material tersimpan untuk ${fasumLabel(fasumId)}.`;
+  } else {
+    const totals = rumahMaterialTotals(rumah);
+    const overLimitNames = rows
+      .map(r => r.materialId)
+      .filter((mid, i, arr) => arr.indexOf(mid) === i) // unik
+      .filter(mid => {
+        const max = materialMax(mid);
+        const terpakai = totals[mid] || 0;
+        return max > 0 && terpakai > max;
+      })
+      .map(mid => materialName(mid));
+    if(overLimitNames.length > 0){
+      msgClass = 'msg err';
+      msgText = `Tersimpan (${rows.length} material) untuk ${rumahLabel(rumah)}, tapi melebihi batas maksimal untuk: ${overLimitNames.join(', ')}.`;
     } else {
-      const max = materialMax(materialId);
-      const totals = rumahMaterialTotals(rumah);
-      const terpakai = totals[materialId] || 0;
-      if(max > 0 && terpakai > max){
-        msgClass = 'msg err';
-        msgText = `Tersimpan, tapi ${rumahLabel(rumah)} sudah pakai ${fmtNum(terpakai)} ${materialSatuan(materialId)} — melebihi batas maksimal ${fmtNum(max)} ${materialSatuan(materialId)}.`;
-      } else {
-        msgText = `Stok keluar untuk ${rumahLabel(rumah)} tersimpan.`;
-      }
+      msgText = `${rows.length} material tersimpan untuk ${rumahLabel(rumah)}.`;
     }
   }
 
@@ -3004,10 +3350,18 @@ async function handleSubmit(form, type){
 function isSafeToAutoRefresh(){
   // Jangan timpa halaman kalau user sedang aktif mengetik di form input
   const active = document.activeElement;
-  if(!active) return true;
-  const tag = active.tagName;
-  if((tag === 'INPUT' || tag === 'TEXTAREA') && (active.closest('#form-in, #form-out, #opname-table, #form-newmat') || active.classList.contains('rumah-edit-nama') || active.classList.contains('fasum-edit-nama') || active.id === 'new-rumah-nama' || active.id === 'new-fasum-nama')){
-    if(active.value && active.value.trim() !== '') return false;
+  if(active){
+    const tag = active.tagName;
+    if((tag === 'INPUT' || tag === 'TEXTAREA') && (active.closest('#form-in, #form-out, #opname-table, #form-newmat') || active.classList.contains('rumah-edit-nama') || active.classList.contains('fasum-edit-nama') || active.id === 'new-rumah-nama' || active.id === 'new-fasum-nama')){
+      if(active.value && active.value.trim() !== '') return false;
+    }
+  }
+  // Jangan timpa juga kalau user sudah menambah lebih dari 1 baris material (lagi input banyak sekaligus),
+  // supaya baris-baris yang sudah diisi tidak ke-reset gara-gara auto-refresh datang di sela-sela pengisian.
+  const masukRows = document.getElementById('masuk-rows');
+  const keluarRows = document.getElementById('keluar-rows');
+  if((masukRows && masukRows.querySelectorAll('.matrow').length > 1) || (keluarRows && keluarRows.querySelectorAll('.matrow').length > 1)){
+    return false;
   }
   return true;
 }
